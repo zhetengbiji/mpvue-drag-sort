@@ -1,5 +1,5 @@
 <template>
-  <movable-area class="drag-sort" :style="{height: currentList.length * height + 'px'}" id="drag">
+  <movable-area class="drag-sort" :style="{height: currentListLength * height + 'px'}" id="drag">
     <movable-view
     v-for="(item, index) in currentList"
     :key="index"
@@ -8,10 +8,10 @@
     direction="vertical"
     disabled
     damping="40"
-    :animation="item.animation"
+    :animation="active !== index"
     class="drag-sort-item"
     style="height:55px"
-    :class="{'active': active == index, 'vh-1px-t': item.index > 0}">
+    :class="{'active': active === index, 'vh-1px-t': item.index > 0}">
       <view class="item">{{item[props.label]}}</view>
       <view class="touch-tight">
         <view class="ico_drag"></view>
@@ -39,12 +39,16 @@ export default {
       height: 55, // 高度
       currentList: [],
       active: -1, // 当前激活的item
-      index: 0, // 当前激活的item的原index
+      itemIndex: 0, // 当前激活的item的原index
       topY: 0, // 距离顶部的距离
       deviationY: 0 // 偏移量
     }
   },
-  computed: {},
+  computed: {
+    currentListLength (){
+      return this.currentList.length * this.height
+    }
+  },
   props: {
     list: {
       type: Array,
@@ -89,7 +93,7 @@ export default {
     },
     touchstart (e) {
       // 计算y轴点击位置
-      var query = wx.createSelectorQuery()
+      var query = wx.createSelectorQuery().in(this)
       query.select('#drag').boundingClientRect()
       query.exec((res) => {
         this.topY = res[0].top
@@ -98,8 +102,8 @@ export default {
         // console.log(touchY)
         for (const key in this.currentList) {
           if ((this.currentList[key].index * this.height < touchY) && ((this.currentList[key].index + 1) * this.height > touchY)) {
-            this.active = key
-            this.index = this.currentList[key].index
+            this.active = Number(key)
+            this.itemIndex = this.currentList[key].index
             break
           }
         }
@@ -110,7 +114,6 @@ export default {
       let touchY = (e.mp.touches[0].clientY - this.topY) - this.deviationY
       // console.log(touchY)
       this.currentList[this.active].y = touchY
-      this.currentList[this.active].animation = false
       for (const key in this.currentList) {
         // 跳过当前操作的item
         if (this.currentList[key].index !== this.currentList[this.active].index) {
@@ -133,7 +136,7 @@ export default {
       }
     },
     touchend (e) {
-      if ((this.index !== this.currentList[this.active].index) && (this.active > -1)) {
+      if ((this.itemIndex !== this.currentList[this.active].index) && (this.active > -1)) {
         this.$emit('change', {
           // 操作值
           data: (() => {
